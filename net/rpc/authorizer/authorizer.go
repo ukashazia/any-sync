@@ -58,9 +58,7 @@ func (a authorizer) HandleRPC(stream drpc.Stream, rpc string) (err error) {
 }
 
 func (a authorizer) validateAllowList(ctx context.Context) (err error) {
-	err = nil
-
-	if a.cfg.AllowedNodePeerIds == nil || a.cfg.AllowedAccountpubKeys == nil {
+	if !a.cfg.Enabled {
 		return
 	}
 
@@ -73,19 +71,19 @@ func (a authorizer) validateAllowList(ctx context.Context) (err error) {
 		return
 	}
 
-	_, ok := a.cfg.AllowedNodePeerIds[peerId]
-	if !ok {
-		err = handshake.ErrInvalidCredentials
+	if _, ok := a.cfg.AllowedNodePeerIds[peerId]; ok {
 		return
 	}
 
 	var raw []byte
 	raw, err = pubKey.Raw()
-	_, ok = a.cfg.AllowedAccountpubKeys[[32]byte(raw)]
-	if !ok {
-		err = handshake.ErrInvalidCredentials
+	if err != nil {
 		return
 	}
 
-	return
+	if _, ok := a.cfg.AllowedAccountpubKeys[[32]byte(raw)]; ok {
+		return
+	}
+
+	return handshake.ErrInvalidCredentials
 }
