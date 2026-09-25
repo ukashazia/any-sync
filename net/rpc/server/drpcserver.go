@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/rpc"
+	"github.com/anyproto/any-sync/net/rpc/authorizer"
 	"github.com/anyproto/any-sync/net/rpc/encoding"
 	"github.com/anyproto/any-sync/net/rpc/limiter"
 
@@ -38,9 +39,10 @@ type DRPCServer interface {
 type drpcServer struct {
 	drpcServer *drpcserver.Server
 	*drpcmux.Mux
-	config  rpc.Config
-	metric  metric.Metric
-	limiter limiter.RpcLimiter
+	config     rpc.Config
+	metric     metric.Metric
+	limiter    limiter.RpcLimiter
+	authorizer authorizer.RpcAuthorizer
 }
 
 type DRPCHandlerWrapper func(handler drpc.Handler) drpc.Handler
@@ -53,12 +55,16 @@ func (s *drpcServer) Init(a *app.App) (err error) {
 	s.config = a.MustComponent("config").(rpc.ConfigGetter).GetDrpc()
 	s.metric, _ = a.Component(metric.CName).(metric.Metric)
 	s.limiter, _ = a.Component(limiter.CName).(limiter.RpcLimiter)
+	s.authorizer, _ = a.Component(authorizer.CName).(authorizer.RpcAuthorizer)
 	s.Mux = drpcmux.New()
 
 	var handler drpc.Handler
 	handler = s
 	if s.limiter != nil {
 		handler = s.limiter.WrapDRPCHandler(handler)
+	}
+	if s.authorizer != nil {
+		handler = s.authorizer.WrapDRPCHandler(handler)
 	}
 	if s.metric != nil {
 		handler = s.metric.WrapDRPCHandler(handler)
