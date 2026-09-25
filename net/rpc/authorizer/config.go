@@ -13,14 +13,12 @@ type peerIds = map[string]struct{}
 type pubKeys = map[[32]byte]crypto.PubKey
 type Config struct {
 	Enabled               bool
-	AllowedNodePeerIds    map[string]struct{}
 	AllowedAccountpubKeys pubKeys
 }
 
 type rawConfig struct {
 	Enabled               bool
 	AllowedAccountpubKeys []string `yaml:"allowed_accounts"`
-	AllowedNodePeerIds    []string `yaml:"allowed_node_peers"`
 }
 
 func (c *Config) UnmarshalYAML(node *yaml.Node) error {
@@ -31,14 +29,12 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 
-	if !raw.Enabled {
-		c.AllowedNodePeerIds = nil
-		c.AllowedAccountpubKeys = nil
+	c.AllowedAccountpubKeys = make(pubKeys)
 
+	if !raw.Enabled {
 		return nil
 	}
 
-	c.AllowedAccountpubKeys = make(pubKeys)
 	for _, k := range raw.AllowedAccountpubKeys {
 		bytes, err := crypto.DecodeBytesFromString(k)
 		if err != nil {
@@ -51,11 +47,6 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 		}
 
 		c.AllowedAccountpubKeys[[32]byte(bytes)] = pubKey
-	}
-
-	c.AllowedNodePeerIds = make(peerIds)
-	for _, p := range raw.AllowedNodePeerIds {
-		c.AllowedNodePeerIds[p] = struct{}{}
 	}
 
 	return nil

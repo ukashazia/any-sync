@@ -25,7 +25,8 @@ func New() RpcAuthorizer {
 type authorizer struct {
 	drpc.Handler
 
-	cfg Config
+	cfg      Config
+	nodeConf nodeconf.NodeConf
 }
 
 func (a authorizer) Name() string {
@@ -35,20 +36,16 @@ func (a authorizer) Name() string {
 func (a *authorizer) Init(app *app.App) error {
 	a.cfg = app.MustComponent("config").(ConfigGetter).GetAuthorizerConf()
 
-	nodeConf := app.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
-	for _, node := range nodeConf.Configuration().Nodes {
-		a.cfg.AllowedNodePeerIds[node.PeerId] = struct{}{}
-	}
-
+	a.nodeConf = app.MustComponent(nodeconf.CName).(nodeconf.NodeConf)
 	return nil
 }
 
-func (a authorizer) WrapDRPCHandler(h drpc.Handler) drpc.Handler {
+func (a *authorizer) WrapDRPCHandler(h drpc.Handler) drpc.Handler {
 	a.Handler = h
 	return a
 }
 
-func (a authorizer) HandleRPC(stream drpc.Stream, rpc string) (err error) {
+func (a *authorizer) HandleRPC(stream drpc.Stream, rpc string) (err error) {
 	ctx := stream.Context()
 	if err = a.validateAllowList(ctx); err != nil {
 		return
@@ -57,7 +54,7 @@ func (a authorizer) HandleRPC(stream drpc.Stream, rpc string) (err error) {
 	return a.Handler.HandleRPC(stream, rpc)
 }
 
-func (a authorizer) validateAllowList(ctx context.Context) (err error) {
+func (a *authorizer) validateAllowList(ctx context.Context) (err error) {
 	if !a.cfg.Enabled {
 		return
 	}
@@ -71,7 +68,7 @@ func (a authorizer) validateAllowList(ctx context.Context) (err error) {
 		return
 	}
 
-	if _, ok := a.cfg.AllowedNodePeerIds[peerId]; ok {
+	if len(a.nodeConf.NodeTypes(peerId)) > 0 {
 		return
 	}
 
