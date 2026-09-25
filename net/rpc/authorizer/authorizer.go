@@ -59,10 +59,6 @@ func (a *authorizer) validateAllowList(ctx context.Context) (err error) {
 		return
 	}
 
-	pubKey, err := peer.CtxPubKey(ctx)
-	if err != nil {
-		return
-	}
 	peerId, err := peer.CtxPeerId(ctx)
 	if err != nil {
 		return
@@ -72,13 +68,18 @@ func (a *authorizer) validateAllowList(ctx context.Context) (err error) {
 		return
 	}
 
+	pubKey, err := peer.CtxPubKey(ctx)
+	if err != nil {
+		return
+	}
+
 	var raw []byte
 	raw, err = pubKey.Raw()
 	if err != nil {
 		return
 	}
 
-	if _, ok := a.cfg.AllowedAccountpubKeys[[32]byte(raw)]; ok {
+	if _, ok := a.cfg.AllowedAccountPubKeys[[32]byte(raw)]; ok {
 		return
 	}
 

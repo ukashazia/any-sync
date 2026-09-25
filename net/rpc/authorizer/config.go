@@ -9,11 +9,10 @@ type ConfigGetter interface {
 	GetAuthorizerConf() Config
 }
 
-type peerIds = map[string]struct{}
-type pubKeys = map[[32]byte]crypto.PubKey
+type pubKeys = map[[32]byte]struct{}
 type Config struct {
 	Enabled               bool
-	AllowedAccountpubKeys pubKeys
+	AllowedAccountPubKeys pubKeys
 }
 
 type rawConfig struct {
@@ -29,24 +28,26 @@ func (c *Config) UnmarshalYAML(node *yaml.Node) error {
 		return err
 	}
 
-	c.AllowedAccountpubKeys = make(pubKeys)
+	c.AllowedAccountPubKeys = make(pubKeys)
 
 	if !raw.Enabled {
+		c.Enabled = false
 		return nil
 	}
 
+	c.Enabled = true
 	for _, k := range raw.AllowedAccountpubKeys {
 		bytes, err := crypto.DecodeBytesFromString(k)
 		if err != nil {
 			return err
 		}
 
-		pubKey, err := crypto.UnmarshalEd25519PublicKey(bytes)
+		_, err = crypto.UnmarshalEd25519PublicKey(bytes)
 		if err != nil {
 			return err
 		}
 
-		c.AllowedAccountpubKeys[[32]byte(bytes)] = pubKey
+		c.AllowedAccountPubKeys[[32]byte(bytes)] = struct{}{}
 	}
 
 	return nil
